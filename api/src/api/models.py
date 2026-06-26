@@ -1,27 +1,23 @@
 from typing import Literal
-from pydantic import BaseModel, Field, field_validator
 
-
-class InputData(BaseModel):
-    onq_folder: int
-    folder_id: list[int] = Field(default_factory=list)
-
-    @field_validator("folder_id", mode="before")
-    @classmethod
-    def _coerce_folder_id(cls, value: object) -> object:
-        """Accept a comma-separated string (e.g. "10,11") as well as a list."""
-        if isinstance(value, str):
-            return [int(part) for part in value.split(",") if part.strip()]
-        return value
+from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel
 
 
 class ChatRequest(BaseModel):
+    """Skill-test payload from the frontend (camelCase on the wire)."""
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    model: str | None = None
+    environment_id: int
+    data_view_id: str
+    jwt: str
     system_prompt: str
-    data: list[InputData] = Field(..., min_length=1)
-    model: str = Field(
-        ...,
-        description="Model id from GET /models; the provider is inferred from it.",
-    )
+    folder_id: str
+    folder_value_id: str
+    user_input: str
+    skill: str
 
 
 class Message(BaseModel):

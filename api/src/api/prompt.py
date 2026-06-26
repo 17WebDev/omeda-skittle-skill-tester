@@ -9,23 +9,27 @@ from .models import ChatRequest
 
 
 def build_messages(req: ChatRequest) -> list[BaseMessage]:
-    data_json = "\n".join(d.model_dump_json() for d in req.data)
     return [
         SystemMessage(content=req.system_prompt),
-        HumanMessage(content=data_json),
+        HumanMessage(content=req.user_input),
     ]
 
 
 def demo() -> None:
     req = ChatRequest(
+        environment_id=1,
+        data_view_id="1",
+        jwt="x",
         system_prompt="test skill",
-        data=[{"onq_folder": 1, "folder_id": [2, 3]}],
-        model="claude-opus-4-8",
+        folder_id="f",
+        folder_value_id="fv",
+        user_input="hello",
+        skill="s",
     )
     msgs = build_messages(req)
     assert len(msgs) == 2
     assert isinstance(msgs[0], SystemMessage)
-    assert '"onq_folder":1' in msgs[1].content
+    assert msgs[1].content == "hello"
     print("ok")
 
 

@@ -22,5 +22,17 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
+    "pyrefly>=0.45.0",
+    "pytest>=8.3.0",
     "ruff>=0.15.20",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra"
+
+[tool.pyrefly]
+project-includes = ["src", "tests"]
+search-path = ["src"]
+python-version = "3.12"

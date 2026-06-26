@@ -3,20 +3,13 @@
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from .config import settings
 from .llm import AVAILABLE_MODELS, build_chat_model, provider_for_model
 from .models import ChatRequest, ChatResponse, ModelInfo, ModelsResponse
+from .prompt import build_messages
 
 app = FastAPI(title="LLM API", version="0.1.0")
-
-
-_ROLE_TO_MESSAGE = {
-    "system": SystemMessage,
-    "user": HumanMessage,
-    "assistant": AIMessage,
-}
 
 
 def serve() -> None:
@@ -62,11 +55,6 @@ async def chat(req: ChatRequest) -> ChatResponse:
     # The payload no longer carries a provider — infer it from the requested
     # model via the catalog. With no model, fall back to the configured default.
     try:
-        provider = (
-            provider_for_model(req.model)
-            if req.model
-            else settings.default_provider.lower()
-        )
         model = build_chat_model(provider, req.model)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

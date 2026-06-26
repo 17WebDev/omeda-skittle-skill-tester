@@ -3,12 +3,22 @@
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 
 from .llm import AVAILABLE_MODELS, build_chat_model, provider_for_model
 from .models import ChatRequest, ChatResponse, ModelInfo, ModelsResponse
 from .prompt import build_messages
 
 app = FastAPI(title="LLM API", version="0.1.0")
+
+# Dev-only: allow any origin. Tighten before production.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 def serve() -> None:

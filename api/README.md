@@ -71,29 +71,46 @@ The catalog is an allowlist — a request must use one of these model ids.
 
 ### `POST /test-skittle`
 
-The payload carries **no `provider`** — it is inferred from the (required)
-`model` against the list returned by `GET /models`.
+Fields use **camelCase** on the wire (snake_case is also accepted). The payload
+carries **no `provider`** — it is inferred from the (required) `model` against
+the list returned by `GET /models`.
 
-| Field           | Type                                  | Notes                                              |
-| --------------- | ------------------------------------- | -------------------------------------------------- |
-| `system_prompt` | `string`                              | Sent as the system message.                        |
-| `data`          | `[{onq_folder: int, folder_id: int[]}]` | Each item is JSON-serialized into the user message. At least one required. |
-| `model`         | `string` (**required**)               | A model id from `GET /models`; provider inferred.  |
+| Field            | Type                  | Notes                                                       |
+| ---------------- | --------------------- | ----------------------------------------------------------- |
+| `model`          | `string` (**required**) | A model id from `GET /models`; provider inferred.         |
+| `systemPrompt`   | `string`              | Combined with `skill` into the system message.              |
+| `skill`          | `string`              | Appended to the system message (agent instructions/context).|
+| `userInput`      | `string`              | Sent as its own (final) human message.                      |
+| `folderId`       | `string`              | Part of the JSON data human message.                        |
+| `folderValueId`  | `int[]` or CSV string | Parsed to a list of ints; part of the JSON data message.    |
+| `environmentId`  | `int`                 | Accepted, not yet used.                                     |
+| `dataViewId`     | `string`              | Accepted, not yet used.                                     |
+| `jwt`            | `string`              | Accepted, not sent to the LLM.                              |
+
+The LLM receives three messages: a **system** message (`systemPrompt` + `skill`),
+a **human** message with the folder data as JSON (`{folderId, folderValueId}`),
+and a **human** message with `userInput`.
 
 ```bash
 curl -s http://localhost:8000/test-skittle \
   -H 'content-type: application/json' \
   -d '{
-        "system_prompt": "You are concise.",
-        "data": [{"onq_folder": 1, "folder_id": [10, 11]}],
-        "model": "claude-opus-4-8"
+        "model": "claude-opus-4-8",
+        "environmentId": 12344,
+        "dataViewId": "1",
+        "jwt": "…",
+        "systemPrompt": "You are concise.",
+        "folderId": "dddd",
+        "folderValueId": "10,11",
+        "userInput": "Summarize the selection.",
+        "skill": "summarizer"
       }'
 ```
 
 Response:
 
 ```json
-{ "content": "...", "provider": "anthropic", "model": "claude-opus-4-8" }
+{ "content": "..." }
 ```
 
 A missing `model` returns `422`; an unknown `model` returns `400`; an

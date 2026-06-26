@@ -1,37 +1,23 @@
-"""Builds LLM messages from a skill-test request.
+"""Builds the LLM messages from a skill-test request (the "prompt strategy").
 
-System prompt = the skill under test. The data folders are handed to the model
-as a JSON user message.
+- System message: the skill's system prompt plus the ``skill`` itself, which
+  carries further instructions / context for the agent.
+- Human message: the folder selection (``folderId`` + ``folderValueId``) as JSON.
+- Human message: the user's input, as its own turn (the actionable ask, last).
 """
+
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
 from .models import ChatRequest
 
 
 def build_messages(req: ChatRequest) -> list[BaseMessage]:
+    system = "\n\n".join(part for part in (req.system_prompt, req.skill) if part)
+    data_json = req.model_dump_json(
+        include={"folder_id", "folder_value_id"}, by_alias=True
+    )
     return [
-        SystemMessage(content=req.system_prompt),
+        SystemMessage(content=system),
+        HumanMessage(content=data_json),
         HumanMessage(content=req.user_input),
     ]
-
-
-def demo() -> None:
-    req = ChatRequest(
-        environment_id=1,
-        data_view_id="1",
-        jwt="x",
-        system_prompt="test skill",
-        folder_id="f",
-        folder_value_id="fv",
-        user_input="hello",
-        skill="s",
-    )
-    msgs = build_messages(req)
-    assert len(msgs) == 2
-    assert isinstance(msgs[0], SystemMessage)
-    assert msgs[1].content == "hello"
-    print("ok")
-
-
-if __name__ == "__main__":
-    demo()

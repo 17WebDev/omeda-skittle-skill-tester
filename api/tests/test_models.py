@@ -3,46 +3,71 @@
 import pytest
 from pydantic import ValidationError
 
-from api.models import (
-    ChatRequest,
-    ChatResponse,
-    InputData,
-    Message,
-    ModelInfo,
-    ModelsResponse,
-)
+from api.models import ChatRequest, ChatResponse, Message, ModelInfo, ModelsResponse
+
+BASE_PAYLOAD = {
+    "model": "claude-opus-4-8",
+    "environmentId": 12344,
+    "dataViewId": "1",
+    "jwt": "tok",
+    "systemPrompt": "be helpful",
+    "folderId": "dddd",
+    "folderValueId": "10,11",
+    "userInput": "hello",
+    "skill": "my-skill",
+}
 
 
-def test_input_data_minimal():
-    item = InputData(onq_folder=1, folder_id=[10, 20])
-    assert item.onq_folder == 1
-    assert item.folder_id == [10, 20]
+def _request(**overrides) -> ChatRequest:
+    return ChatRequest.model_validate({**BASE_PAYLOAD, **overrides})
 
 
-def test_chat_request_valid():
-    req = ChatRequest(
-        system_prompt="be helpful",
-        data=[InputData(onq_folder=1, folder_id=[1])],
-        model="claude-opus-4-8",
-    )
+def test_chat_request_accepts_camelcase_payload():
+    req = _request()
     assert req.model == "claude-opus-4-8"
-    assert len(req.data) == 1
+    assert req.environment_id == 12344
+    assert req.data_view_id == "1"
+    assert req.user_input == "hello"
+    assert req.skill == "my-skill"
+
+
+def test_chat_request_also_accepts_snake_case():
+    # populate_by_name=True lets the python field names work on the wire too.
+    req = ChatRequest.model_validate(
+        {
+            "model": "claude-opus-4-8",
+            "environment_id": 7,
+            "data_view_id": "1",
+            "jwt": "tok",
+            "system_prompt": "be helpful",
+            "folder_id": "dddd",
+            "folder_value_id": "10,11",
+            "user_input": "hi",
+            "skill": "my-skill",
+        }
+    )
+    assert req.environment_id == 7
+    assert req.user_input == "hi"
+
+
+def test_folder_value_id_parses_csv_string():
+    assert _request(folderValueId="10,11").folder_value_id == [10, 11]
+
+
+def test_folder_value_id_accepts_list():
+    assert _request(folderValueId=[10, 11]).folder_value_id == [10, 11]
 
 
 def test_chat_request_requires_model():
-    data = [InputData(onq_folder=1, folder_id=[1])]
+    payload = {k: v for k, v in BASE_PAYLOAD.items() if k != "model"}
     with pytest.raises(ValidationError):
-        ChatRequest(system_prompt="be helpful", data=data)  # type: ignore[call-arg]
-
-
-def test_chat_request_requires_nonempty_data():
-    with pytest.raises(ValidationError, match="at least 1"):
-        ChatRequest(system_prompt="x", data=[], model="claude-opus-4-8")
+        ChatRequest.model_validate(payload)
 
 
 def test_chat_request_requires_system_prompt():
+    payload = {k: v for k, v in BASE_PAYLOAD.items() if k != "systemPrompt"}
     with pytest.raises(ValidationError):
-        ChatRequest(data=[InputData(onq_folder=1, folder_id=[1])])  # type: ignore[call-arg]
+        ChatRequest.model_validate(payload)
 
 
 def test_message_role_validated():
@@ -53,12 +78,8 @@ def test_message_role_validated():
 
 
 def test_chat_response_roundtrip():
-    resp = ChatResponse(content="hello", provider="openai", model="gpt-4o")
-    assert resp.model_dump() == {
-        "content": "hello",
-        "provider": "openai",
-        "model": "gpt-4o",
-    }
+    resp = ChatResponse(content="hello")
+    assert resp.model_dump() == {"content": "hello"}
 
 
 def test_model_info_provider_validated():
@@ -68,7 +89,5 @@ def test_model_info_provider_validated():
 
 
 def test_models_response_nests_model_info():
-    resp = ModelsResponse(
-        models=[ModelInfo(id="claude-opus-4-8", provider="anthropic")]
-    )
+    resp = ModelsResponse(models=[ModelInfo(id="claude-opus-4-8", provider="anthropic")])
     assert resp.models[0].id == "claude-opus-4-8"

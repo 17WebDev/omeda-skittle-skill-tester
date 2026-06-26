@@ -64,4 +64,4 @@ async def chat(req: ChatRequest) -> ChatResponse:
     except Exception as exc:  # surface upstream/provider errors as 502
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
-    return ChatResponse(content=result.text, provider=provider, model=req.model)
+    return ChatResponse(content=result.text)

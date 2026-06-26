@@ -25,8 +25,15 @@ class _FakeModel:
 
 def _payload(**overrides):
     body = {
-        "system_prompt": "be helpful",
-        "data": [{"onq_folder": 1, "folder_id": [10, 20]}],
+        "model": "claude-opus-4-8",
+        "environmentId": 12344,
+        "dataViewId": "1",
+        "jwt": "tok",
+        "systemPrompt": "be helpful",
+        "folderId": "dddd",
+        "folderValueId": "10,11",
+        "userInput": "hello",
+        "skill": "my-skill",
     }
     body.update(overrides)
     return body
@@ -62,10 +69,7 @@ def test_chat_returns_model_reply(client, monkeypatch):
     monkeypatch.setattr("api.main.build_chat_model", lambda *a, **k: _FakeModel("pong"))
     resp = client.post("/test-skittle", json=_payload(model="claude-opus-4-8"))
     assert resp.status_code == 200
-    body = resp.json()
-    assert body["content"] == "pong"
-    assert body["provider"] == "anthropic"
-    assert body["model"] == "claude-opus-4-8"
+    assert resp.json() == {"content": "pong"}
 
 
 def test_chat_infers_provider_from_model(client, monkeypatch):
@@ -84,8 +88,16 @@ def test_chat_infers_provider_from_model(client, monkeypatch):
 
 
 def test_chat_requires_model(client):
-    # `model` is required now that there is no server-side default.
-    resp = client.post("/test-skittle", json=_payload())
+    body = _payload()
+    del body["model"]
+    resp = client.post("/test-skittle", json=body)
+    assert resp.status_code == 422
+
+
+def test_chat_rejects_missing_required_field(client):
+    body = _payload()
+    del body["folderId"]
+    resp = client.post("/test-skittle", json=body)
     assert resp.status_code == 422
 
 
@@ -101,11 +113,3 @@ def test_chat_upstream_error_returns_502(client, monkeypatch):
     resp = client.post("/test-skittle", json=_payload(model="claude-opus-4-8"))
     assert resp.status_code == 502
     assert "provider exploded" in resp.json()["detail"]
-
-
-def test_chat_requires_nonempty_data(client):
-    resp = client.post(
-        "/test-skittle",
-        json={"system_prompt": "x", "data": [], "model": "claude-opus-4-8"},
-    )
-    assert resp.status_code == 422

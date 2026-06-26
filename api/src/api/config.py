@@ -8,15 +8,11 @@ class Settings(BaseSettings):
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
 
-    # Provider credentials (read by the LangChain integrations).
+    # Provider credentials (read by the LangChain integrations). The model is
+    # always supplied by the consumer per request, so there are no server-side
+    # default-model or max-token settings — each model uses its own default.
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None
-
-    # Defaults for the chat endpoint.
-    default_provider: str = "anthropic"
-    default_openai_model: str = "gpt-4o"
-    default_anthropic_model: str = "claude-opus-4-8"
-    default_max_tokens: int = 1024
 
 
 settings = Settings()

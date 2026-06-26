@@ -1,21 +1,26 @@
 from typing import Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class InputData(BaseModel):
     onq_folder: int
-    folder_id: list[int] = Field(
-        default_factory=lambda s: [int(x) for x in s.split(",")]
-    )
+    folder_id: list[int] = Field(default_factory=list)
+
+    @field_validator("folder_id", mode="before")
+    @classmethod
+    def _coerce_folder_id(cls, value: object) -> object:
+        """Accept a comma-separated string (e.g. "10,11") as well as a list."""
+        if isinstance(value, str):
+            return [int(part) for part in value.split(",") if part.strip()]
+        return value
 
 
 class ChatRequest(BaseModel):
     system_prompt: str
     data: list[InputData] = Field(..., min_length=1)
-    model: str | None = Field(
-        default=None,
-        description="Model id from GET /models; the provider is inferred from it. "
-        "Omit to use the configured default.",
+    model: str = Field(
+        ...,
+        description="Model id from GET /models; the provider is inferred from it.",
     )
 
 
@@ -33,11 +38,7 @@ class ChatResponse(BaseModel):
 class ModelInfo(BaseModel):
     id: str
     provider: Literal["openai", "anthropic"]
-    is_default: bool = Field(
-        default=False, description="True if this is the configured default for its provider"
-    )
 
 
 class ModelsResponse(BaseModel):
-    default_provider: str
     models: list[ModelInfo]

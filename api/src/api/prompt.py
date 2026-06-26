@@ -20,6 +20,7 @@ def demo() -> None:
     req = ChatRequest(
         system_prompt="test skill",
         data=[{"onq_folder": 1, "folder_id": [2, 3]}],
+        model="claude-opus-4-8",
     )
     msgs = build_messages(req)
     assert len(msgs) == 2

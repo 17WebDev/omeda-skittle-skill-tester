@@ -4,10 +4,11 @@ Two connectors are wired up:
   - OpenAI   via ``langchain_openai.ChatOpenAI``
   - Anthropic (Claude) via ``langchain_anthropic.ChatAnthropic``
 
-Model instances are cached per (provider, model, max_tokens) so each distinct
-configuration is constructed once and reused across requests rather than rebuilt
-on every call. ``ChatOpenAI`` / ``ChatAnthropic`` are safe to share — they hold a
-reusable HTTP client and carry no per-request state.
+Model instances are cached per (provider, model) so each distinct configuration
+is constructed once and reused across requests rather than rebuilt on every call.
+``ChatOpenAI`` / ``ChatAnthropic`` are safe to share — they hold a reusable HTTP
+client and carry no per-request state. ``max_tokens`` is deliberately not set, so
+each model uses its own default rather than a generic cap.
 """
 
 from functools import lru_cache
@@ -20,10 +21,9 @@ from .config import settings
 
 SUPPORTED_PROVIDERS = ("openai", "anthropic")
 
-# Template catalog of models known to work with the connectors wired up above.
-# This is a curated starting list, not an exhaustive or live-queried inventory —
-# extend it as providers ship new models. Order is most- to least-capable so the
-# first entry per provider reads as a sensible default suggestion.
+# Authoritative catalog of models this API will serve. ``provider_for_model``
+# rejects anything not listed, so add a model here before requesting it. Order is
+# most- to least-capable per provider.
 AVAILABLE_MODELS: dict[str, tuple[str, ...]] = {
     "anthropic": (
         "claude-opus-4-8",
@@ -32,6 +32,7 @@ AVAILABLE_MODELS: dict[str, tuple[str, ...]] = {
         "claude-haiku-4-5",
     ),
     "openai": (
+        "gpt-5.4",
         "gpt-4o",
         "gpt-4o-mini",
         "gpt-4-turbo",
@@ -64,57 +65,36 @@ def provider_for_model(model: str) -> str:
 
 
 @lru_cache(maxsize=None)
-def _construct_chat_model(
-    provider: str, model: str, max_tokens: int
-) -> BaseChatModel:
+def _construct_chat_model(provider: str, model: str) -> BaseChatModel:
     """Build one chat model. Cached: identical args return the same instance.
 
-    A raised ValueError is not cached, so a request that fails for a missing key
-    can succeed later once the key is configured.
+    ``max_tokens`` is intentionally left unset so each model applies its own
+    default. A raised ValueError is not cached, so a request that fails for a
+    missing key can succeed later once the key is configured.
     """
     if provider == "openai":
         if not settings.openai_api_key:
             raise ValueError("OPENAI_API_KEY is not configured")
-        return ChatOpenAI(
-            model=model, api_key=settings.openai_api_key, max_tokens=max_tokens
-        )
+        return ChatOpenAI(model=model, api_key=settings.openai_api_key)
 
     if provider == "anthropic":
         if not settings.anthropic_api_key:
             raise ValueError("ANTHROPIC_API_KEY is not configured")
-        return ChatAnthropic(
-            model_name=model,
-            api_key=settings.anthropic_api_key,
-            max_tokens=max_tokens,
-        )
+        return ChatAnthropic(model_name=model, api_key=settings.anthropic_api_key)
 
     raise ValueError(
         f"Unknown provider {provider!r}; expected one of {SUPPORTED_PROVIDERS}"
     )
 
 
-def build_chat_model(
-    provider: str | None = None,
-    model: str | None = None,
-    max_tokens: int | None = None,
-) -> BaseChatModel:
-    """Return a cached chat model for ``provider``, resolving defaults first.
+def build_chat_model(provider: str, model: str) -> BaseChatModel:
+    """Return a cached chat model for ``provider``/``model``.
 
-    Raises ValueError for an unknown provider or a missing API key.
+    The consumer always supplies the model (the provider is inferred from it via
+    ``provider_for_model``), so neither argument is optional. Raises ValueError
+    for an unknown provider or a missing API key.
     """
-    provider = (provider or settings.default_provider).lower()
-    max_tokens = max_tokens or settings.default_max_tokens
-
-    if provider == "openai":
-        model = model or settings.default_openai_model
-    elif provider == "anthropic":
-        model = model or settings.default_anthropic_model
-    else:
-        raise ValueError(
-            f"Unknown provider {provider!r}; expected one of {SUPPORTED_PROVIDERS}"
-        )
-
-    return _construct_chat_model(provider, model, max_tokens)
+    return _construct_chat_model(provider.lower(), model)
 
 
 def clear_chat_model_cache() -> None:

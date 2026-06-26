@@ -4,7 +4,6 @@ from typing import Literal
 
 from fastapi import FastAPI, HTTPException
 
-from .config import settings
 from .llm import AVAILABLE_MODELS, build_chat_model, provider_for_model
 from .models import ChatRequest, ChatResponse, ModelInfo, ModelsResponse
 from .prompt import build_messages
@@ -30,40 +29,32 @@ def list_models(
 ) -> ModelsResponse:
     """List the models available to consume, optionally filtered by provider.
 
-    The catalog is a curated template (see ``AVAILABLE_MODELS``); ``is_default``
-    flags the model resolved when a request omits an explicit ``model``.
+    The catalog is a curated allowlist (see ``AVAILABLE_MODELS``); a request must
+    specify one of these model ids.
     """
-    defaults = {
-        "openai": settings.default_openai_model,
-        "anthropic": settings.default_anthropic_model,
-    }
     providers: list[Literal["openai", "anthropic"]] = (
         [provider] if provider else ["anthropic", "openai"]
     )
     models = [
-        ModelInfo(id=model, provider=p, is_default=model == defaults[p])
+        ModelInfo(id=model, provider=p)
         for p in providers
         for model in AVAILABLE_MODELS[p]
     ]
-    return ModelsResponse(
-        default_provider=settings.default_provider.lower(), models=models
-    )
+    return ModelsResponse(models=models)
 
 
 @app.post("/test-skittle", response_model=ChatResponse)
 async def chat(req: ChatRequest) -> ChatResponse:
-    # The payload no longer carries a provider — infer it from the requested
-    # model via the catalog. With no model, fall back to the configured default.
+    # The payload carries no provider — infer it from the (required) model via
+    # the catalog.
     try:
+        provider = provider_for_model(req.model)
         model = build_chat_model(provider, req.model)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    data_content = "\n".join(item.model_dump_json() for item in req.data)
-    lc_messages = [
-        _ROLE_TO_MESSAGE["system"](content=req.system_prompt),
-        _ROLE_TO_MESSAGE["user"](content=data_content),
-    ]
+    # Message construction lives in the prompt module (the "prompt strategy").
+    lc_messages = build_messages(req)
 
     try:
         # await the async invocation so the LLM network call yields the event
@@ -73,11 +64,4 @@ async def chat(req: ChatRequest) -> ChatResponse:
     except Exception as exc:  # surface upstream/provider errors as 502
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
-    return ChatResponse(
-        content=result.text,
-        provider=provider,
-        model=getattr(model, "model", None)
-        or getattr(model, "model_name", None)
-        or req.model
-        or "",
-    )
+    return ChatResponse(content=result.text, provider=provider, model=req.model)

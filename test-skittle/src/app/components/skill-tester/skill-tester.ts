@@ -1,7 +1,8 @@
-import {Component, computed, signal} from '@angular/core';
+import {Component, computed, inject, OnInit, signal} from '@angular/core';
 import {FormsModule} from '@angular/forms';
-import {ModelConfig} from '../../interface/model';
+import {ModelConfig, SkittleTestRequest} from '../../interface/model';
 import {requiredNumber, requiredString} from '../../utils/field-validation.utils';
+import {SkillTesterService} from '../../services/skill-tester.service';
 
 @Component({
   selector: 'app-skill-tester',
@@ -9,24 +10,10 @@ import {requiredNumber, requiredString} from '../../utils/field-validation.utils
   templateUrl: './skill-tester.html',
   styleUrl: './skill-tester.css',
 })
-export class SkillTester {
-  readonly modelOptions: ModelConfig = {
-    default_provider: 'openai',
-    models: [
-      { id: 'claude-opus-4-8',   provider: 'anthropic', is_default: true  },
-      { id: 'claude-opus-4-7',   provider: 'anthropic', is_default: false },
-      { id: 'claude-sonnet-4-6', provider: 'anthropic', is_default: false },
-      { id: 'claude-haiku-4-5',  provider: 'anthropic', is_default: false },
-      { id: 'gpt-4o',            provider: 'openai',    is_default: false },
-      { id: 'gpt-4o-mini',       provider: 'openai',    is_default: false },
-      { id: 'gpt-4-turbo',       provider: 'openai',    is_default: false },
-      { id: 'gpt-3.5-turbo',     provider: 'openai',    is_default: false },
-    ]
-  };
+export class SkillTester implements OnInit{
+  protected readonly skillTesterService = inject(SkillTesterService);
 
-  readonly defaultModel = this.modelOptions.models.find(model => model.is_default)?.id ?? '';
-
-  model = signal(this.defaultModel);
+  model = signal('');
   environmentId = signal<number | null>(null);
   dataViewId = signal<number | null>(null);
   jwt = signal('');
@@ -45,22 +32,29 @@ export class SkillTester {
   modelError = requiredString(this.model, this.modelTouched, 'Model');
   skillError = requiredString(this.skill, this.skillTouched, 'Skill');
 
+  async ngOnInit(): Promise<void> {
+    const config = await this.skillTesterService.fetchModels();
+    if (config) {
+      this.model.set(this.skillTesterService.defaultModelId(config));
+    }
+  }
+
   isValid = computed(() =>
     this.environmentId() !== null &&
     this.model().trim() !== '' &&
     this.skill().trim() !== ''
   );
 
-  sentToLLM(): void {
+  async sentToLLM(): Promise<void> {
     this.environmentIdTouched.set(true);
     this.modelTouched.set(true);
     this.skillTouched.set(true);
 
     if (!this.isValid()) return
 
-    const payload = {
+    const payload: SkittleTestRequest = {
       model: this.model(),
-      environmentId: this.environmentId(),
+      environmentId: this.environmentId()!,
       dataViewId: this.dataViewId(),
       jwt: this.jwt(),
       systemPrompt: this.systemPrompt(),
@@ -69,8 +63,12 @@ export class SkillTester {
       userInput: this.userInput(),
       skill: this.skill()
     };
-    this.payloadOutput.set(JSON.stringify(payload, null, 2));
-    console.log(`Sent to LLM: ${this.payloadOutput()}`);
+
+    const result = await this.skillTesterService.sendToLLM(payload);
+    if (result) {
+      this.payloadOutput.set(JSON.stringify(result, null, 2));
+    }
+
   }
 
   sentToFrontend(): void {

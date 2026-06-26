@@ -13,16 +13,24 @@
       <div class="row-4">
         <div>
           <label class="field-label" for="model">Model</label>
-          <select id="model"
-                  [class.input-error]="modelError()"
-                  [(ngModel)]="model"
-                  [ngModel]="model()"
-                  (ngModelChange)="model.set($event)"
-                  (blur)="modelTouched.set(true)">
-            @for (option of modelOptions.models; track option.id) {
-              <option value="{{ option.id }}">{{ option.id }}</option>
-            }
-          </select>
+          @if (skillTesterService.modelsLoading()) {
+            <select disabled>
+              <option>Loading...</option>
+            </select>
+          } @else if (skillTesterService.modelsError()) {
+            <span class="field-error">{{ skillTesterService.modelsError() }}</span>
+          } @else {
+            <select id="model"
+                    [class.input-error]="modelError()"
+                    [ngModel]="model()"
+                    (ngModelChange)="model.set($event)"
+                    (blur)="modelTouched.set(true)">
+              <option value="" disabled>Select model</option>
+              @for (option of skillTesterService.models()?.models; track option.id) {-->
+                <option value="{{ option.id }}">{{ option.id }}</option>
+              }
+            </select>
+          }
           @if (modelError()) {
             <p class="field-error">{{ modelError() }}</p>
           }
@@ -103,10 +111,18 @@
 
     <div class="btn-row">
       <button class="btn-primary" type="button" (click)="sentToLLM()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-        Send to LLM
+        @if (skillTesterService.testLoading()) {
+          Sending...
+        } @else {
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Send to LLM
+        }
       </button>
     </div>
+
+    @if (skillTesterService.testError()) {
+      <p class="field-error">{{ skillTesterService.testError() }}</p>
+    }
 
     <div class="divider" style="margin-top: 1.35rem;"></div>
 

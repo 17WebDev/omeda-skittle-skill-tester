@@ -1,0 +1,16 @@
+services:
+  api:
+    build: .
+    image: omeda-skittle-api:latest
+    ports:
+      - "8000:8000"
+    # Keys/config injected at runtime — not baked into the image.
+    env_file:
+      - .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s

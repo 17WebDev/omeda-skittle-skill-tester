@@ -1,0 +1,25 @@
+# Secrets — never bake into the image; pass at runtime via --env-file / compose.
+.env
+.env.*
+!.env.example
+
+# Virtualenv (rebuilt inside the image)
+.venv
+
+# Python caches
+__pycache__/
+*.py[cod]
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+
+# VCS / editor
+.git
+.gitignore
+.idea/
+.vscode/
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml

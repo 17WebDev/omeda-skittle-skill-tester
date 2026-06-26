@@ -23,14 +23,21 @@ def test_chat_request_valid():
     req = ChatRequest(
         system_prompt="be helpful",
         data=[InputData(onq_folder=1, folder_id=[1])],
+        model="claude-opus-4-8",
     )
-    assert req.model is None
+    assert req.model == "claude-opus-4-8"
     assert len(req.data) == 1
+
+
+def test_chat_request_requires_model():
+    data = [InputData(onq_folder=1, folder_id=[1])]
+    with pytest.raises(ValidationError):
+        ChatRequest(system_prompt="be helpful", data=data)  # type: ignore[call-arg]
 
 
 def test_chat_request_requires_nonempty_data():
     with pytest.raises(ValidationError, match="at least 1"):
-        ChatRequest(system_prompt="x", data=[])
+        ChatRequest(system_prompt="x", data=[], model="claude-opus-4-8")
 
 
 def test_chat_request_requires_system_prompt():
@@ -55,14 +62,13 @@ def test_chat_response_roundtrip():
 
 
 def test_model_info_provider_validated():
-    assert ModelInfo(id="gpt-4o", provider="openai").is_default is False
+    assert ModelInfo(id="gpt-4o", provider="openai").provider == "openai"
     with pytest.raises(ValidationError):
         ModelInfo(id="x", provider="gemini")  # pyrefly: ignore[bad-argument-type]
 
 
 def test_models_response_nests_model_info():
     resp = ModelsResponse(
-        default_provider="anthropic",
-        models=[ModelInfo(id="claude-opus-4-8", provider="anthropic", is_default=True)],
+        models=[ModelInfo(id="claude-opus-4-8", provider="anthropic")]
     )
-    assert resp.models[0].is_default is True
+    assert resp.models[0].id == "claude-opus-4-8"

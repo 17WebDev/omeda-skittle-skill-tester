@@ -1,35 +1,13 @@
 """Basic FastAPI app that relays messages to an LLM via LangChain."""
 
-from typing import Literal
-
 from fastapi import FastAPI, HTTPException
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-from pydantic import BaseModel, Field
 
 from .config import settings
 from .llm import build_chat_model
+from .models import ChatRequest, ChatResponse
 
 app = FastAPI(title="LLM API", version="0.1.0")
-
-
-class Message(BaseModel):
-    role: Literal["system", "user", "assistant"]
-    content: str
-
-
-class ChatRequest(BaseModel):
-    messages: list[Message] = Field(..., min_length=1)
-    provider: str | None = Field(
-        default=None, description="'openai' or 'anthropic' (defaults to configured)"
-    )
-    model: str | None = Field(default=None, description="Override the provider's model")
-    max_tokens: int | None = None
-
-
-class ChatResponse(BaseModel):
-    content: str
-    provider: str
-    model: str
 
 
 _ROLE_TO_MESSAGE = {

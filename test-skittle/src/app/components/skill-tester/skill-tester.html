@@ -1,0 +1,127 @@
+<div class="card">
+  <!-- Header -->
+  <div class="card-header">
+    <p class="brand-eyebrow">OST &middot; Omeda</p>
+    <h1>Skittle Skill Tester</h1>
+  </div>
+
+  <!-- Body -->
+  <div class="card-body">
+
+    <!-- Row 1: Config fields -->
+    <div class="section">
+      <div class="row-4">
+        <div>
+          <label class="field-label" for="model">Model</label>
+          <select id="model"
+                  [class.input-error]="modelError()"
+                  [(ngModel)]="model"
+                  [ngModel]="model()"
+                  (ngModelChange)="model.set($event)"
+                  (blur)="modelTouched.set(true)">
+            @for (option of modelOptions.models; track option.id) {
+              <option value="{{ option.id }}">{{ option.id }}</option>
+            }
+          </select>
+          @if (modelError()) {
+            <p class="field-error">{{ modelError() }}</p>
+          }
+        </div>
+        <div>
+          <label class="field-label" for="environmentId-id">EnvironmentId ID</label>
+          <input type="text"
+                 id="environmentId-id"
+                 [class.input-error]="environmentIdError()"
+                 [ngModel]="environmentId()"
+                 (ngModelChange)="environmentId.set($event ? +$event : null)"
+                 (blur)="environmentIdTouched.set(true)"
+                 placeholder="12312" />
+          @if (environmentIdError()) {
+            <p class="field-error">{{ environmentIdError() }}</p>
+          }
+        </div>
+        <div>
+          <label class="field-label" for="version">Version</label>
+          <input type="text" id="version" [ngModel]="dataViewId()" (ngModelChange)="dataViewId.set($event)" placeholder="2" />
+        </div>
+        <div>
+          <label class="field-label" for="jwt">JWT Token</label>
+          <input type="password" id="jwt" [ngModel]="jwt()" (ngModelChange)="jwt.set($event)" placeholder="jwt_token" />
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- System Prompt -->
+    <div class="section">
+      <span class="section-label">System Prompt Information</span>
+      <textarea id="system-prompt" [ngModel]="systemPrompt()" (ngModelChange)="systemPrompt.set($event)" rows="6" placeholder="Enter your system prompt here..."></textarea>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Folder IDs -->
+    <div class="section">
+      <div class="row-2">
+        <div>
+          <span class="section-label">Folder ID</span>
+          <input type="text" id="folder-id" [ngModel]="folderId()" (ngModelChange)="folderId.set($event)" placeholder="e.g. 21245" />
+        </div>
+        <div>
+          <span class="section-label">Folder Value ID</span>
+          <input type="text" id="folder-value-id" [ngModel]="folderValueId()" (ngModelChange)="folderValueId.set($event)" placeholder="e.g. 21245" />
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- User Input -->
+    <div class="section">
+      <span class="section-label">User Input</span>
+      <textarea id="user-input" [ngModel]="userInput()" (ngModelChange)="userInput.set($event)" rows="4" placeholder="Additional context from user and hybrid / hydrate search? The ONQ Folder ID is..."></textarea>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Skill -->
+    <div class="section">
+      <span class="section-label">Skill</span>
+      <textarea id="skill"
+                [class.input-error]="skillError()"
+                [ngModel]="skill()"
+                (ngModelChange)="skill.set($event)"
+                (blur)="skillTouched.set(true)"
+                rows="5" placeholder="Skill ----">
+
+      </textarea>
+      @if (skillError()) {
+        <p class="field-error">{{ skillError() }}</p>
+      }
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-primary" type="button" (click)="sentToLLM()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        Send to LLM
+      </button>
+    </div>
+
+    <div class="divider" style="margin-top: 1.35rem;"></div>
+
+    <!-- Request Payload -->
+    <div class="section">
+      <span class="section-label">Request Payload from LLM</span>
+      <textarea class="mono readonly" id="payload-output" [ngModel]="payloadOutput()" (ngModelChange)="payloadOutput.set($event)" rows="9" readonly placeholder='{&#10;  "mode": "test"&#10;}'></textarea>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-secondary" type="button" (click)="sentToFrontend()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 3 21 3 21 9"/><path d="M10 14L21 3"/><path d="M21 15v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/></svg>
+        Send to Frontend
+      </button>
+    </div>
+
+  </div>
+</div>

@@ -55,15 +55,16 @@ async def chat(req: ChatRequest) -> ChatResponse:
     # The payload no longer carries a provider — infer it from the requested
     # model via the catalog. With no model, fall back to the configured default.
     try:
+        provider = (
+            provider_for_model(req.model)
+            if req.model
+            else settings.default_provider.lower()
+        )
         model = build_chat_model(provider, req.model)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    data_content = "\n".join(item.model_dump_json() for item in req.data)
-    lc_messages = [
-        _ROLE_TO_MESSAGE["system"](content=req.system_prompt),
-        _ROLE_TO_MESSAGE["user"](content=data_content),
-    ]
+    lc_messages = build_messages(req)
 
     try:
         # await the async invocation so the LLM network call yields the event

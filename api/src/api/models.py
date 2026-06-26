@@ -12,10 +12,11 @@ class InputData(BaseModel):
 class ChatRequest(BaseModel):
     system_prompt: str
     data: list[InputData] = Field(..., min_length=1)
-    provider: Literal["openai", "anthropic"] | None = Field(
-        default=None, description="'openai' or 'anthropic' (defaults to configured)"
+    model: str | None = Field(
+        default=None,
+        description="Model id from GET /models; the provider is inferred from it. "
+        "Omit to use the configured default.",
     )
-    model: str | None = Field(default=None, description="Override the provider's model")
 
 
 class Message(BaseModel):
@@ -27,3 +28,16 @@ class ChatResponse(BaseModel):
     content: str
     provider: str
     model: str
+
+
+class ModelInfo(BaseModel):
+    id: str
+    provider: Literal["openai", "anthropic"]
+    is_default: bool = Field(
+        default=False, description="True if this is the configured default for its provider"
+    )
+
+
+class ModelsResponse(BaseModel):
+    default_provider: str
+    models: list[ModelInfo]
